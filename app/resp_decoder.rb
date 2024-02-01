@@ -12,6 +12,9 @@ class RESPDecoder
         decode_bulk_string(resp_io)
       elsif first_char == "*"
         decode_array(resp_io)
+      elsif first_char == "-"
+        error_message = decode_simple_string(resp_io)
+        raise "RESP Error: #{error_message}"
       else
         raise "Unhandled first_char: #{first_char}"
       end

@@ -8,14 +8,24 @@ class ReplicationClient
 
     sleep 1 # CodeCrafters doesn't boot master in time always
 
-    connection = TCPSocket.new(master_host, master_port)
-    connection.write(RESPEncoder.encode(["PING"]))
-    response = RESPDecoder.decode(connection)
+    connection = RESPConnection.new(TCPSocket.new(master_host, master_port))
+
+    response = connection.send_command("PING")
 
     if response.downcase != "pong"
       puts "Invalid PING response from master: #{response.inspect}"
-      connection.write(RESPEncoder.encode_error_message("invalid PING response"))
     end
+
+    # TODO: CodeCrafters doesn't accept uppercase REPLCONF
+    response = connection.send_command("replconf", "listening-port", @server.port.to_s)
+
+    if response.downcase != "ok"
+      puts "Invalid REPLCONF response from master: #{response.inspect}"
+    end
+
+    # TODO: Handshake part 3?
+
+    puts "Connected to master at #{master_host}:#{master_port}"
   end
 
   def master_host

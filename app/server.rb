@@ -3,6 +3,7 @@ require "securerandom"
 
 require_relative "command_line_options_parser"
 require_relative "database"
+require_relative "resp_connection"
 require_relative "resp_decoder"
 require_relative "resp_encoder"
 require_relative "replication_client"
@@ -11,6 +12,7 @@ $stdout.sync = true
 
 class RedisServer
   attr_reader :replica_of
+  attr_reader :port
 
   def initialize(command_line_options)
     @port = command_line_options["port"] || 6379

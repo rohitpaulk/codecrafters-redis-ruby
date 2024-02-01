@@ -6,6 +6,8 @@ class ReplicationClient
   def start!
     return unless @server.replica_of
 
+    sleep 1 # CodeCrafters doesn't boot master in time always
+
     connection = TCPSocket.new(master_host, master_port)
     connection.write(RESPEncoder.encode(["PING"]))
     response = RESPDecoder.decode(connection)

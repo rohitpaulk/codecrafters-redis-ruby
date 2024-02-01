@@ -1,5 +1,9 @@
 require "socket"
 
+require_relative "resp_decoder"
+
+$stdout.sync = true
+
 class YourRedisServer
   def initialize(port)
     @port = port
@@ -22,10 +26,19 @@ class YourRedisServer
     puts "Handling client: #{peer_address}"
 
     loop do
-      client.recv(1024)
-      client.write("+PONG\r\n")
-    rescue Errno::EPIPE
-      puts "Connection closed: #{peer_address}"
+      command, *arguments = RESPDecoder.decode(client)
+      puts "Received: #{command} #{arguments.join(" ")}"
+
+      case command.downcase
+      when "ping"
+        client.write("+PONG\r\n")
+      when "echo"
+        client.write("$#{arguments[0].length}\r\n#{arguments[0]}\r\n")
+      else
+        client.write("-ERR unknown command `#{command}`\r\n")
+      end
+    rescue Errno::EPIPE, IncompleteRESP => e
+      puts "Connection closed: #{peer_address} (#{e.class})"
       return
     end
   end

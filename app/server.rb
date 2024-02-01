@@ -40,41 +40,52 @@ class RedisServer
   end
 
   def handle_client_command(client, command, arguments)
-      case command.downcase
-      when "ping"
-        client.write("+PONG\r\n")
-      when "echo"
-        client.write("$#{arguments[0].length}\r\n#{arguments[0]}\r\n")
-      when "set"
-        option_arguments = []
+    command = command.downcase
 
-        if arguments.length > 2
-          option_arguments = arguments[2..]
-          arguments = arguments[0..1]
-        end
+    if respond_to?("handle_#{command}_command")
+      send("handle_#{command}_command", client, arguments)
+    else
+      client.write("-ERR unknown command `#{command}`\r\n")
+    end
+  end
 
-        key, value = arguments
+  def handle_ping_command(client, arguments)
+    client.write("+PONG\r\n")
+  end
 
-        if option_arguments.empty?
-          @database.set(key, value)
-          client.write("+OK\r\n")
-        elsif option_arguments.first.eql?("px") && option_arguments.length == 2
-          @database.set_with_expiry(key, value, option_arguments[1].to_i)
-          client.write("+OK\r\n")
-        else
-          client.write("-ERR unsupported SET options: #{option_arguments.join(" ")}\r\n")
-        end
-      when "get"
-        value = @database.get(arguments[0])
+  def handle_echo_command(client, arguments)
+    client.write("$#{arguments[0].length}\r\n#{arguments[0]}\r\n")
+  end
 
-        if value.nil?
-          client.write("$-1\r\n")
-        else
-          client.write("$#{value.length}\r\n#{value}\r\n")
-        end
-      else
-        client.write("-ERR unknown command `#{command}`\r\n")
-      end
+  def handle_get_command(client, arguments)
+    value = @database.get(arguments[0])
+
+    if value.nil?
+      client.write("$-1\r\n")
+    else
+      client.write("$#{value.length}\r\n#{value}\r\n")
+    end
+  end
+
+  def handle_set_command(client, arguments)
+    option_arguments = []
+
+    if arguments.length > 2
+      option_arguments = arguments[2..]
+      arguments = arguments[0..1]
+    end
+
+    key, value = arguments
+
+    if option_arguments.empty?
+      @database.set(key, value)
+      client.write("+OK\r\n")
+    elsif option_arguments.first.eql?("px") && option_arguments.length == 2
+      @database.set_with_expiry(key, value, option_arguments[1].to_i)
+      client.write("+OK\r\n")
+    else
+      client.write("-ERR unsupported SET options: #{option_arguments.join(" ")}\r\n")
+    end
   end
 end
 

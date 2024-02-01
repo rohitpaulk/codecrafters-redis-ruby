@@ -3,6 +3,7 @@ require "socket"
 require_relative "command_line_options_parser"
 require_relative "database"
 require_relative "resp_decoder"
+require_relative "resp_encoder"
 
 $stdout.sync = true
 
@@ -49,26 +50,32 @@ class RedisServer
       handle_set_command(client, arguments)
     when "get"
       handle_get_command(client, arguments)
+    when "info"
+      handle_info_command(client, arguments)
     else
-      client.write("-ERR unknown command `#{command}`\r\n")
+      client.write(RESPEncoder.encode_error_message("unknown command `#{command}`"))
     end
   end
 
   def handle_ping_command(client, arguments)
-    client.write("+PONG\r\n")
+    client.write(RESPEncoder.encode("PONG"))
   end
 
   def handle_echo_command(client, arguments)
-    client.write("$#{arguments[0].length}\r\n#{arguments[0]}\r\n")
+    client.write(RESPEncoder.encode(arguments[0]))
   end
 
   def handle_get_command(client, arguments)
     value = @database.get(arguments[0])
+    client.write(RESPEncoder.encode(value))
+  end
 
-    if value.nil?
-      client.write("$-1\r\n")
+  def handle_info_command(client, arguments)
+    case arguments[0]
+    when "replication"
+      client.write(RESPEncoder.encode("role:master"))
     else
-      client.write("$#{value.length}\r\n#{value}\r\n")
+      client.write(RESPEncoder.encode_error_message("unsupported INFO options: #{arguments.join(" ")}"))
     end
   end
 
@@ -89,7 +96,7 @@ class RedisServer
       @database.set_with_expiry(key, value, option_arguments[1].to_i)
       client.write("+OK\r\n")
     else
-      client.write("-ERR unsupported SET options: #{option_arguments.join(" ")}\r\n")
+      client.write(RESPEncoder.encode_error_message("unsupported SET options: #{option_arguments.join(" ")}"))
     end
   end
 end

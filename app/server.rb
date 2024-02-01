@@ -6,6 +6,7 @@ class YourRedisServer
   end
 
   def start
+    puts "Listening on port #{@port}..."
     server = TCPServer.new(@port)
     client = server.accept
   end

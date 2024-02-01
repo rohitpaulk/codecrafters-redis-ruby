@@ -12,8 +12,6 @@ class ReplicationServer
     @client_connection.write("+FULLRESYNC #{@server.replication_id} #{@server.replication_offset}\r\n")
 
     empty_rdb_file_contents = Base64.decode64("UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog==")
-    puts empty_rdb_file_contents
-    puts empty_rdb_file_contents.length
     resp_connection.write(empty_rdb_file_contents)
 
     sleep 600 # Not implemented the rest yet

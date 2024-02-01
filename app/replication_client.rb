@@ -8,7 +8,12 @@ class ReplicationClient
 
     sleep 1 # CodeCrafters doesn't boot master in time always
 
-    connection = RESPConnection.new(TCPSocket.new(master_host, master_port))
+    connection = begin
+      RESPConnection.new(TCPSocket.new(master_host, master_port))
+    rescue Errno::ECONNREFUSED
+      puts "Master not available at #{master_host}:#{master_port}"
+      return
+    end
 
     response = connection.send_command("PING")
     puts "Sent PING"

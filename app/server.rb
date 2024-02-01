@@ -1,7 +1,8 @@
 require "socket"
 
-require_relative "resp_decoder"
+require_relative "command_line_options_parser"
 require_relative "database"
+require_relative "resp_decoder"
 
 $stdout.sync = true
 
@@ -77,4 +78,5 @@ class RedisServer
   end
 end
 
-RedisServer.new(6379).start
+command_line_options = CommandLineOptionsParser.parse(ARGV)
+RedisServer.new(command_line_options["port"]&.to_i || 6379).start

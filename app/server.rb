@@ -5,19 +5,25 @@ require_relative "command_line_options_parser"
 require_relative "database"
 require_relative "resp_decoder"
 require_relative "resp_encoder"
+require_relative "replication_client"
 
 $stdout.sync = true
 
 class RedisServer
+  attr_reader :replica_of
+
   def initialize(command_line_options)
     @port = command_line_options["port"] || 6379
     @replica_of = command_line_options["replicaof"]
     @replication_id = SecureRandom.hex(40)
     @replication_offset = 0
     @database = Database.new
+    @replication_client = ReplicationClient.new(self) if @replica_of
   end
 
   def start
+    @replication_client&.start!
+
     puts "Listening on port #{@port}..."
     server = TCPServer.new(@port)
 
@@ -112,5 +118,4 @@ class RedisServer
 end
 
 command_line_options = CommandLineOptionsParser.parse(ARGV)
-puts "Parsed command line options: #{command_line_options}"
 RedisServer.new(command_line_options).start

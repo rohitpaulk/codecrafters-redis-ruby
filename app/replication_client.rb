@@ -28,7 +28,10 @@ class ReplicationClient
       puts "Invalid REPLCONF response from master: #{response.inspect}"
     end
 
-    # TODO: Handshake part 3?
+    response = connection.send_command("PSYNC", "?", "-1")
+
+    # Don't know what to do with this yet.
+    puts "PSYNC response: #{response.inspect}"
 
     puts "Connected to master at #{master_host}:#{master_port}"
   end

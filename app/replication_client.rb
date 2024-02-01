@@ -17,7 +17,7 @@ class ReplicationClient
     end
 
     # TODO: CodeCrafters doesn't accept uppercase REPLCONF
-    response = connection.send_command("replconf", "listening-port", @server.port.to_s)
+    response = connection.send_command("REPLCONF", "listening-port", @server.port.to_s)
 
     if response.downcase != "ok"
       puts "Invalid REPLCONF response from master: #{response.inspect}"

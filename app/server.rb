@@ -49,7 +49,7 @@ class RedisServer
         if option_arguments.empty?
           @database.set(key, value)
           client.write("+OK\r\n")
-        elsif option_arguments.first.eql?("ex") && option_arguments.length == 2
+        elsif option_arguments.first.eql?("px") && option_arguments.length == 2
           @database.set_with_expiry(key, value, option_arguments[1].to_i)
           client.write("+OK\r\n")
         else

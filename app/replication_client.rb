@@ -11,24 +11,28 @@ class ReplicationClient
     connection = RESPConnection.new(TCPSocket.new(master_host, master_port))
 
     response = connection.send_command("PING")
+    puts "Sent PING"
 
     if response.downcase != "pong"
       puts "Invalid PING response from master: #{response.inspect}"
     end
 
     response = connection.send_command("REPLCONF", "listening-port", @server.port.to_s)
+    puts "Sent REPLCONF with capabilties"
 
     if response.downcase != "ok"
       puts "Invalid REPLCONF response from master: #{response.inspect}"
     end
 
     response = connection.send_command("REPLCONF", "capa", "eof", "capa", "psync2")
+    puts "Sent REPLCONF with capabilties"
 
     if response.downcase != "ok"
       puts "Invalid REPLCONF response from master: #{response.inspect}"
     end
 
     response = connection.send_command("PSYNC", "?", "-1")
+    puts "Sent PSYNC"
 
     # Don't know what to do with this yet.
     puts "PSYNC response: #{response.inspect}"

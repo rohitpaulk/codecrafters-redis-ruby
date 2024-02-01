@@ -7,12 +7,15 @@ require_relative "resp_connection"
 require_relative "resp_decoder"
 require_relative "resp_encoder"
 require_relative "replication_client"
+require_relative "replication_server"
 
 $stdout.sync = true
 
 class RedisServer
   attr_reader :replica_of
   attr_reader :port
+  attr_reader :replication_id
+  attr_reader :replication_offset
 
   def initialize(command_line_options)
     @port = command_line_options["port"] || 6379
@@ -45,7 +48,12 @@ class RedisServer
       command, *arguments = RESPDecoder.decode(client)
       puts "Received: #{command} #{arguments.join(" ")}"
 
-      handle_client_command(client, command, arguments)
+      # For PSYNC, we need to take over the loop and handle replication messages instead
+      if command.downcase.eql?("psync")
+        ReplicationServer.new(self, client).start!
+      else
+        handle_client_command(client, command, arguments)
+      end
     rescue Errno::EPIPE, IncompleteRESP => e
       puts "Connection closed: #{peer_address} (#{e.class})"
       return
@@ -65,9 +73,8 @@ class RedisServer
     when "info"
       handle_info_command(client, arguments)
     when "replconf"
-      client.write("+OK\r\n") # CodeCrafters runs master code too when only testing replica
-    when "psync"
-      client.write("+FULLRESYNC #{@replication_id} #{@replication_offset}\r\n") # CodeCrafters runs master code too when only testing replica
+      # We can ignore the inputs of this for now
+      client.write("+OK\r\n")
     else
       client.write(RESPEncoder.encode_error_message("unknown command `#{command}`"))
     end

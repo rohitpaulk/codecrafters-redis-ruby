@@ -21,6 +21,8 @@ class YourRedisServer
     loop do
       client.recv(1024)
       client.write("+PONG\r\n")
+    rescue Errno::EPIPE
+      puts "Connection closed #{client.peeraddr}"
     end
   end
 end

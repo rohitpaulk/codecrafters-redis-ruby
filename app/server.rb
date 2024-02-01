@@ -40,10 +40,16 @@ class RedisServer
   end
 
   def handle_client_command(client, command, arguments)
-    command = command.downcase
-
-    if respond_to?("handle_#{command}_command")
-      send("handle_#{command}_command", client, arguments)
+    if defined?("handle_#{command}_command")
+    case command.downcase
+    when "ping"
+      handle_ping_command(client, arguments)
+    when "echo"
+      handle_echo_command(client, arguments)
+    when "set"
+      handle_set_command(client, arguments)
+    when "get"
+      handle_get_command(client, arguments)
     else
       client.write("-ERR unknown command `#{command}`\r\n")
     end

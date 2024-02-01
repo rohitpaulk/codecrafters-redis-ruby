@@ -66,6 +66,8 @@ class RedisServer
       handle_info_command(client, arguments)
     when "replconf"
       client.write("+OK\r\n") # CodeCrafters runs master code too when only testing replica
+    when "psync"
+      client.write("+FULLRESYNC #{@replication_id} #{@replication_offset}\r\n") # CodeCrafters runs master code too when only testing replica
     else
       client.write(RESPEncoder.encode_error_message("unknown command `#{command}`"))
     end

@@ -1,4 +1,5 @@
 require "socket"
+require "securerandom"
 
 require_relative "command_line_options_parser"
 require_relative "database"
@@ -11,6 +12,8 @@ class RedisServer
   def initialize(command_line_options)
     @port = command_line_options["port"] || 6379
     @replica_of = command_line_options["replicaof"]
+    @replication_id = SecureRandom.hex(40)
+    @replication_offset = 0
     @database = Database.new
   end
 
@@ -74,8 +77,13 @@ class RedisServer
   def handle_info_command(client, arguments)
     case arguments[0]
     when "replication"
-      role = @replica_of ? "slave" : "master"
-      client.write(RESPEncoder.encode("role:#{role}"))
+      keys = {
+        "role" => @replica_of ? "slave" : "master",
+        "master_replid" => @replication_id,
+        "master_repl_offset" => @replication_offset,
+      }
+
+      client.write(RESPEncoder.encode("#{keys.map { |k, v| "#{k}:#{v}" }.join("\n")}"))
     else
       client.write(RESPEncoder.encode_error_message("unsupported INFO options: #{arguments.join(" ")}"))
     end

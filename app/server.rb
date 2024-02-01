@@ -7,7 +7,7 @@ require_relative "resp_connection"
 require_relative "resp_decoder"
 require_relative "resp_encoder"
 require_relative "replication_client"
-require_relative "replication_server"
+require_relative "replication_stream"
 
 $stdout.sync = true
 
@@ -24,6 +24,7 @@ class RedisServer
     @replication_offset = 0
     @database = Database.new
     @replication_client = ReplicationClient.new(self) if @replica_of
+    @replication_streams = []
   end
 
   def start
@@ -50,9 +51,15 @@ class RedisServer
 
       # For PSYNC, we need to take over the loop and handle replication messages instead
       if command.downcase.eql?("psync")
-        ReplicationServer.new(self, client).start!
+        replication_stream = ReplicationStream.new(self, client)
+        replication_stream.start!
+        @replication_streams << replication_stream
       else
         handle_client_command(client, command, arguments)
+
+        @replication_streams.each do |replication_stream|
+          replication_stream.propagate_command(command, arguments)
+        end
       end
     rescue Errno::EPIPE, IncompleteRESP => e
       puts "Connection closed: #{peer_address} (#{e.class})"

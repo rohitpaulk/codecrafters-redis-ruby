@@ -18,11 +18,15 @@ class YourRedisServer
   protected
 
   def handle_client(client)
+    peer_address = "#{client.peeraddr[3]}:#{client.peeraddr[1]}"
+    puts "Handling client: #{peer_address}"
+
     loop do
       client.recv(1024)
       client.write("+PONG\r\n")
     rescue Errno::EPIPE
-      puts "Connection closed #{client.peeraddr}"
+      puts "Connection closed: #{peer_address}"
+      return
     end
   end
 end

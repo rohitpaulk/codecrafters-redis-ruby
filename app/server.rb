@@ -40,7 +40,6 @@ class RedisServer
   end
 
   def handle_client_command(client, command, arguments)
-    if defined?("handle_#{command}_command")
     case command.downcase
     when "ping"
       handle_ping_command(client, arguments)

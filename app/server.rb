@@ -31,6 +31,14 @@ class RedisServer
       command, *arguments = RESPDecoder.decode(client)
       puts "Received: #{command} #{arguments.join(" ")}"
 
+      handle_client_command(client, command, arguments)
+    rescue Errno::EPIPE, IncompleteRESP => e
+      puts "Connection closed: #{peer_address} (#{e.class})"
+      return
+    end
+  end
+
+  def handle_client_command(client, command, arguments)
       case command.downcase
       when "ping"
         client.write("+PONG\r\n")
@@ -66,10 +74,6 @@ class RedisServer
       else
         client.write("-ERR unknown command `#{command}`\r\n")
       end
-    rescue Errno::EPIPE, IncompleteRESP => e
-      puts "Connection closed: #{peer_address} (#{e.class})"
-      return
-    end
   end
 end
 

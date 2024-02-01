@@ -8,9 +8,20 @@ class YourRedisServer
   def start
     puts "Listening on port #{@port}..."
     server = TCPServer.new(@port)
-    client = server.accept
-    client.recv(1024)
-    client.write("+PONG\r\n")
+
+    loop do
+      client = server.accept
+      Thread.new { handle_client(client) }
+    end
+  end
+
+  protected
+
+  def handle_client(client)
+    loop do
+      client.recv(1024)
+      client.write("+PONG\r\n")
+    end
   end
 end
 

@@ -1,12 +1,14 @@
 require "socket"
 
 require_relative "resp_decoder"
+require_relative "database"
 
 $stdout.sync = true
 
-class YourRedisServer
+class RedisServer
   def initialize(port)
     @port = port
+    @database = Database.new
   end
 
   def start
@@ -34,6 +36,13 @@ class YourRedisServer
         client.write("+PONG\r\n")
       when "echo"
         client.write("$#{arguments[0].length}\r\n#{arguments[0]}\r\n")
+      when "set"
+        key, value = arguments
+        @database.set(key, value)
+        client.write("+OK\r\n")
+      when "get"
+        value = @database.get(arguments[0])
+        client.write("$#{value.length}\r\n#{value}\r\n")
       else
         client.write("-ERR unknown command `#{command}`\r\n")
       end
@@ -44,4 +53,4 @@ class YourRedisServer
   end
 end
 
-YourRedisServer.new(6379).start
+RedisServer.new(6379).start

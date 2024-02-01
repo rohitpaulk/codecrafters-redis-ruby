@@ -8,8 +8,9 @@ require_relative "resp_encoder"
 $stdout.sync = true
 
 class RedisServer
-  def initialize(port)
-    @port = port
+  def initialize(command_line_options)
+    @port = command_line_options["port"] || 6379
+    @replica_of = command_line_options["replicaof"]
     @database = Database.new
   end
 
@@ -73,7 +74,8 @@ class RedisServer
   def handle_info_command(client, arguments)
     case arguments[0]
     when "replication"
-      client.write(RESPEncoder.encode("role:master"))
+      role = @replica_of ? "slave" : "master"
+      client.write(RESPEncoder.encode("role:#{role}"))
     else
       client.write(RESPEncoder.encode_error_message("unsupported INFO options: #{arguments.join(" ")}"))
     end
@@ -102,4 +104,5 @@ class RedisServer
 end
 
 command_line_options = CommandLineOptionsParser.parse(ARGV)
-RedisServer.new(command_line_options["port"]&.to_i || 6379).start
+puts "Parsed command line options: #{command_line_options}"
+RedisServer.new(command_line_options).start

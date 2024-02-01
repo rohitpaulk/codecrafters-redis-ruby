@@ -16,8 +16,13 @@ class ReplicationClient
       puts "Invalid PING response from master: #{response.inspect}"
     end
 
-    # TODO: CodeCrafters doesn't accept uppercase REPLCONF
     response = connection.send_command("REPLCONF", "listening-port", @server.port.to_s)
+
+    if response.downcase != "ok"
+      puts "Invalid REPLCONF response from master: #{response.inspect}"
+    end
+
+    response = connection.send_command("REPLCONF", "capa", "eof", "capa", "psync2")
 
     if response.downcase != "ok"
       puts "Invalid REPLCONF response from master: #{response.inspect}"

@@ -2,6 +2,7 @@ class ReplicationClient
   def initialize(server)
     @server = server
     @connection = nil
+    @offset = 0
   end
 
   def start!
@@ -60,6 +61,7 @@ class ReplicationClient
   def each_command(&block)
     loop do
       command, *arguments = @connection.read
+
       case command.downcase
       when "replconf"
         if arguments[0].downcase != "getack"
@@ -67,10 +69,12 @@ class ReplicationClient
           continue
         end
 
-        @connection.write(["REPLCONF",  "ACK", "0"])
+        @connection.write(["REPLCONF",  "ACK", @offset.to_s])
       else
         yield command, arguments
       end
+
+      @offset += RESPEncoder.encode([command, *arguments]).bytesize
     rescue Errno::EPIPE, IncompleteRESP, Errno::ECONNRESET => e
       puts "Replication stream closed (#{e.class})"
       return

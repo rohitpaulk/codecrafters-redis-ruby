@@ -97,6 +97,8 @@ class RedisServer
       handle_get_command(client, arguments)
     when "info"
       handle_info_command(client, arguments)
+    when "wait"
+      handle_wait_command(client, arguments)
     else
       client.write(RESPEncoder.encode_error_message("unknown command `#{command}`"))
     end
@@ -149,6 +151,13 @@ class RedisServer
     else
       client.write(RESPEncoder.encode_error_message("unsupported SET options: #{option_arguments.join(" ")}"))
     end
+  end
+
+  def handle_wait_command(client, arguments)
+    number_of_replicas = arguments[0].to_i
+    timeout_in_milliseconds = arguments[1].to_i
+
+    client.write(RESPEncoder.encode(0))
   end
 
   def is_write_command?(command)

@@ -10,6 +10,8 @@ class RESPEncoder
         "$#{value.length}\r\n#{value}\r\n"
       when nil
         "$-1\r\n"
+      when Integer
+        ":#{value}\r\n"
       end
     rescue EOFError
       raise IncompleteRESP

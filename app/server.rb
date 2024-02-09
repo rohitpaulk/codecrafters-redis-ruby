@@ -61,11 +61,13 @@ class RedisServer
       command, *arguments = RESPDecoder.decode(client)
       puts "Received: #{command} #{arguments.join(" ")}"
 
-      # For PSYNC, we need to take over the loop and handle replication messages instead
-      if command.downcase.eql?("psync")
+      case command.downcase
+      when "psync" # For PSYNC, we need to take over the loop and handle replication messages instead
         replication_stream = ReplicationStream.new(self, client)
         replication_stream.start!
         @replication_streams << replication_stream
+      when "replconf" # REPLCONF isn't a "client" command, so let's handle it here
+        client.write("+OK\r\n") # We don't support any options for now
       else
         handle_client_command(client, command, arguments)
 
@@ -95,9 +97,6 @@ class RedisServer
       handle_get_command(client, arguments)
     when "info"
       handle_info_command(client, arguments)
-    when "replconf"
-      # We can ignore the inputs of this for now
-      client.write("+OK\r\n")
     else
       client.write(RESPEncoder.encode_error_message("unknown command `#{command}`"))
     end

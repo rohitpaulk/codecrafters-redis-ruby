@@ -60,7 +60,17 @@ class ReplicationClient
   def each_command(&block)
     loop do
       command, *arguments = @connection.read
-      yield command, arguments
+      case command.downcase
+      when "replconf"
+        if arguments[0].downcase != "getack"
+          @connection.write_error("Unrecognized REPLCONF subcommand: #{arguments[0]}")
+          continue
+        end
+
+        @connection.write(["REPLCONF",  "ACK", "0"])
+      else
+        yield command, arguments
+      end
     rescue Errno::EPIPE, IncompleteRESP, Errno::ECONNRESET => e
       puts "Replication stream closed (#{e.class})"
       return

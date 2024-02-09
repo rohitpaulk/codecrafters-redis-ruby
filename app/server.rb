@@ -1,5 +1,6 @@
 require "socket"
 require "securerandom"
+require "stringio"
 
 require_relative "command_line_options_parser"
 require_relative "database"
@@ -30,7 +31,15 @@ class RedisServer
   def start
     if @replication_client
       puts "Replica: Initiating replication client"
-      @replication_client.start!
+
+      Thread.new do
+        @replication_client.start!
+
+        @replication_client.each_command do |command, arguments|
+          dummy_io = StringIO.new
+          handle_client_command(dummy_io, command, arguments)
+        end
+      end
     end
 
     puts "Listening on port #{@port}..."

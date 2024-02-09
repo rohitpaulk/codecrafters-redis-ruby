@@ -154,10 +154,11 @@ class RedisServer
   end
 
   def handle_wait_command(client, arguments)
-    number_of_replicas = arguments[0].to_i
+    expected_number_of_replicas = arguments[0].to_i
     timeout_in_milliseconds = arguments[1].to_i
 
-    client.write(RESPEncoder.encode(0))
+    confirmed_number_of_replicas = @replication_streams.size # TODO: We should instead check the offsets of each replica
+    client.write(RESPEncoder.encode(confirmed_number_of_replicas))
   end
 
   def is_write_command?(command)

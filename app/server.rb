@@ -75,7 +75,9 @@ class RedisServer
           puts "Propagating command to #{@replication_streams.size} replicas: #{command} #{arguments.join(" ")}"
 
           @replication_streams.each do |replication_stream|
-            replication_stream.propagate_command(command, arguments)
+            Thread.new do
+              replication_stream.propagate_command(command, arguments)
+            end
           end
         end
       end
@@ -154,16 +156,52 @@ class RedisServer
   end
 
   def handle_wait_command(client, arguments)
+    current_replication_offset = @replication_offset
     expected_number_of_replicas = arguments[0].to_i
     timeout_in_milliseconds = arguments[1].to_i
 
-    confirmed_number_of_replicas = @replication_streams.size # TODO: We should instead check the offsets of each replica
-    client.write(RESPEncoder.encode(confirmed_number_of_replicas))
+    Timeout.timeout(timeout_in_milliseconds / 1000.0) do
+      confirmed_replication_streams, unconfirmed_replication_streams = @replication_streams.partition { |replication_stream| replication_stream.offset >= current_replication_offset }
+
+      puts "Found #{confirmed_replication_streams.size} confirmed replicas, need #{expected_number_of_replicas}."
+
+      if confirmed_replication_streams.size >= expected_number_of_replicas
+        puts "Responding immediately with number of confirmed replicas: #{confirmed_replication_streams.size}"
+        client.write(RESPEncoder.encode(confirmed_replication_streams.size))
+        return
+      end
+
+      puts "Found #{confirmed_replication_streams.size} confirmed replicas, need #{expected_number_of_replicas}..."
+
+      loop do
+        unconfirmed_replication_streams.each do |replication_stream|
+          threads = []
+
+          check_replicas = lambda do
+            confirmed, unconfirmed = @replication_streams.partition { |replication_stream| replication_stream.offset >= current_replication_offset }
+
+            if confirmed.size >= expected_number_of_replicas
+              client.write(RESPEncoder.encode(confirmed.size))
+              return
+            end
+          end
+
+          threads << Thread.new do
+            new_offset = replication_stream.refresh_offset!
+            check_replicas.call if new_offset >= current_replication_offset
+          end
+        end
+      end
+    end
+  rescue Timeout::Error
+    confirmed, unconfirmed = @replication_streams.partition { |replication_stream| replication_stream.offset >= current_replication_offset }
+    puts "Timed out waiting for replicas, needed #{expected_number_of_replicas} but only found #{confirmed.size}"
+    client.write(RESPEncoder.encode(confirmed.size))
   end
 
   def is_write_command?(command)
     case command.downcase
-    when "replconf", "ping", "echo", "info"
+    when "replconf", "ping", "echo", "info", "wait"
       false
     else
       true

@@ -1,4 +1,8 @@
+require "timeout"
+
 class RESPConnection
+  class TimeoutError < StandardError; end
+
   def initialize(socket)
     @socket = socket
   end
@@ -17,7 +21,12 @@ class RESPConnection
 
   def send_command(command, *arguments)
     write([command, *arguments])
-    read
+
+    Timeout.timeout(0.5) do
+      read
+    end
+  rescue Timeout::Error
+    raise RESPConnection::TimeoutError, "Timed out waiting for response to #{command}"
   end
 end
 

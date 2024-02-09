@@ -28,7 +28,10 @@ class RedisServer
   end
 
   def start
-    @replication_client&.start!
+    if @replication_client
+      puts "Replica: Initiating replication client"
+      @replication_client.start!
+    end
 
     puts "Listening on port #{@port}..."
     server = TCPServer.new(@port)

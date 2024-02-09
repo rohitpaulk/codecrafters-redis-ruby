@@ -6,7 +6,7 @@ class ReplicationClient
   def start!
     return unless @server.replica_of
 
-    sleep 1 # CodeCrafters doesn't boot master in time always
+    puts "connecting to master at #{master_host}:#{master_port}..."
 
     connection = begin
       RESPConnection.new(TCPSocket.new(master_host, master_port))
@@ -15,6 +15,9 @@ class ReplicationClient
       return
     end
 
+    puts "Connected to master."
+
+    puts "Sending PING..."
     response = connection.send_command("PING")
     puts "Sent PING"
 
@@ -36,13 +39,15 @@ class ReplicationClient
       puts "Invalid REPLCONF response from master: #{response.inspect}"
     end
 
-    response = connection.send_command("PSYNC", "?", "-1")
+    response = connection.write(["PSYNC", "?", "-1"])
     puts "Sent PSYNC"
 
     # Don't know what to do with this yet.
     puts "PSYNC response: #{response.inspect}"
 
     puts "Connected to master at #{master_host}:#{master_port}"
+  rescue RESPConnection::TimeoutError
+    puts "Timed out waiting for response from master, ignoring replication client"
   end
 
   def master_host

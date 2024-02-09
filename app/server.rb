@@ -60,11 +60,15 @@ class RedisServer
       else
         handle_client_command(client, command, arguments)
 
-        @replication_streams.each do |replication_stream|
-          replication_stream.propagate_command(command, arguments)
+        if is_write_command?(command)
+          puts "Propagating command to #{@replication_streams.size} replicas: #{command} #{arguments.join(" ")}"
+
+          @replication_streams.each do |replication_stream|
+            replication_stream.propagate_command(command, arguments)
+          end
         end
       end
-    rescue Errno::EPIPE, IncompleteRESP => e
+    rescue Errno::EPIPE, IncompleteRESP, Errno::ECONNRESET => e
       puts "Connection closed: #{peer_address} (#{e.class})"
       return
     end
@@ -136,6 +140,15 @@ class RedisServer
       client.write("+OK\r\n")
     else
       client.write(RESPEncoder.encode_error_message("unsupported SET options: #{option_arguments.join(" ")}"))
+    end
+  end
+
+  def is_write_command?(command)
+    case command.downcase
+    when "replconf", "ping", "echo", "info"
+      false
+    else
+      true
     end
   end
 end

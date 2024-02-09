@@ -15,6 +15,10 @@ class RESPConnection
     @socket.write(RESPEncoder.encode(value))
   end
 
+  def write_raw(bytes)
+    @socket.write(bytes)
+  end
+
   def write_error(message)
     @socket.write(RESPEncoder.encode_error_message(message))
   end

@@ -11,6 +11,15 @@ class RESPConnection
     RESPDecoder.decode(@socket)
   end
 
+  def read_rdb_file
+    if @socket.read(1) != "$"
+      raise "Expected RDB file to start with $"
+    end
+
+    length = RESPDecoder.read_int_with_clrf(@socket)
+    @socket.read(length)
+  end
+
   def write(value)
     @socket.write(RESPEncoder.encode(value))
   end

@@ -32,19 +32,25 @@ class ReplicationClient
       puts "Invalid REPLCONF response from master: #{response.inspect}"
     end
 
-    response = connection.send_command("REPLCONF", "capa", "eof", "capa", "psync2")
+    response = connection.send_command("REPLCONF", "capa", "psync2")
     puts "Sent REPLCONF with capabilties"
 
     if response.downcase != "ok"
       puts "Invalid REPLCONF response from master: #{response.inspect}"
     end
 
-    response = connection.write(["PSYNC", "?", "-1"])
+    response = connection.send_command(["PSYNC", "?", "-1"])
     puts "Sent PSYNC"
 
-    # Don't know what to do with this yet.
-    puts "PSYNC response: #{response.inspect}"
+    if !response.downcase.start_with?("fullresync")
+      puts "Invalid PSYNC response from master: #{response.inspect}"
+      return
+    end
 
+    puts "Received fullresync from master (#{master_host}:#{master_port})"
+
+    rdb_file_contents = connection.read_rdb_file
+    puts "Received RDB file (#{rdb_file_contents.bytesize} bytes) from master"
     puts "Connected to master at #{master_host}:#{master_port}"
   rescue RESPConnection::TimeoutError
     puts "Timed out waiting for response from master, ignoring replication client"

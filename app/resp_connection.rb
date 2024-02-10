@@ -41,5 +41,12 @@ class RESPConnection
   rescue Timeout::Error
     raise RESPConnection::TimeoutError, "Timed out waiting for response to #{command}"
   end
+
+  def send_command_without_timeout(command, *arguments)
+    write([command, *arguments])
+    read
+  rescue Timeout::Error
+    raise RESPConnection::TimeoutError, "Timed out waiting for response to #{command}"
+  end
 end
 

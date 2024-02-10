@@ -25,10 +25,12 @@ class ReplicationStream
 
   def refresh_offset!
     puts "- Refreshing replication offset for replica"
-    response = @connection.send_command("REPLCONF", "GETACK", "*")
+    response = @connection.send_command_without_timeout("REPLCONF", "GETACK", "*")
 
     raise "Invalid response to REPLCONF GETACK: #{response}" unless response.is_a?(Integer)
 
     @offset = response
+  rescue IncompleteRESP
+    puts "- Incomplete response to REPLCONF GETACK, ignoring"
   end
 end

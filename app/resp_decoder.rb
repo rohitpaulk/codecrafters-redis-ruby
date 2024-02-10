@@ -16,7 +16,7 @@ class RESPDecoder
         error_message = decode_simple_string(resp_io)
         raise "RESP Error: #{error_message}"
       else
-        raise "Unhandled first_char: #{first_char}"
+        raise "Unhandled first_char: #{first_char.inspect}"
       end
     rescue EOFError
       raise IncompleteRESP

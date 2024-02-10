@@ -161,35 +161,23 @@ class RedisServer
     timeout_in_milliseconds = arguments[1].to_i
 
     Timeout.timeout(timeout_in_milliseconds / 1000.0) do
-      confirmed_replication_streams, unconfirmed_replication_streams = @replication_streams.partition { |replication_stream| replication_stream.offset >= current_replication_offset }
-
-      puts "Found #{confirmed_replication_streams.size} confirmed replicas, need #{expected_number_of_replicas}."
-
-      if confirmed_replication_streams.size >= expected_number_of_replicas
-        puts "Responding immediately with number of confirmed replicas: #{confirmed_replication_streams.size}"
-        client.write(RESPEncoder.encode(confirmed_replication_streams.size))
-        return
+      # Ask for ACKs everywhere
+      @replication_streams.each do |replication_stream|
+        Thread.new do
+          replication_stream.refresh_offset!
+        end
       end
 
-      puts "Found #{confirmed_replication_streams.size} confirmed replicas, need #{expected_number_of_replicas}..."
-
       loop do
-        unconfirmed_replication_streams.each do |replication_stream|
-          threads = []
+        confirmed, unconfirmed = @replication_streams.partition { |replication_stream| replication_stream.offset >= current_replication_offset }
 
-          check_replicas = lambda do
-            confirmed, unconfirmed = @replication_streams.partition { |replication_stream| replication_stream.offset >= current_replication_offset }
-
-            if confirmed.size >= expected_number_of_replicas
-              client.write(RESPEncoder.encode(confirmed.size))
-              return
-            end
-          end
-
-          threads << Thread.new do
-            new_offset = replication_stream.refresh_offset!
-            check_replicas.call if new_offset >= current_replication_offset
-          end
+        if confirmed.size >= expected_number_of_replicas
+          puts "Received ACKs from #{confirmed.size} replicas, which is enough. Responding"
+          client.write(RESPEncoder.encode(confirmed.size))
+          return
+        else
+          puts "Received #{confirmed.size} ACKs, waiting for #{expected_number_of_replicas - confirmed.size} more"
+          sleep 0.1
         end
       end
     end

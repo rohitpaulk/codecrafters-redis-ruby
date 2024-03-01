@@ -8,7 +8,6 @@ class Commands::Xadd < Commands::Base
 
     database.with_lock do
       stream = database.get(stream_key) || Values::Stream.new
-
       entry_id = entry_id_from_argument(stream, entry_id_argument)
 
       if entry_id.nil?

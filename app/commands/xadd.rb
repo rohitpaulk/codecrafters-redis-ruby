@@ -49,7 +49,7 @@ class Commands::Xadd < Commands::Base
     when /\d+-\d+/
       entry_id_argument.split("-").first.to_i
     when "*"
-      "0" # TODO
+      Time.now.to_i * 1000
     when /\d+-\*/
       entry_id_argument.split("-").first.to_i
     end
@@ -59,9 +59,7 @@ class Commands::Xadd < Commands::Base
     case entry_id_argument
     when /\d+-\d+/
       entry_id_argument.split("-").last.to_i
-    when "*"
-      "1" # TODO
-    when /\d+-\*/
+    when "*", /\d+-\*/
       if stream.sorted_entries.last&.id&.time_part.eql?(time_part)
         stream.sorted_entries.last.id.sequence_number_part + 1
       else

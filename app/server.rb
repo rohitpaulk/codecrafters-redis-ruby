@@ -101,6 +101,8 @@ class RedisServer
       handle_info_command(client, arguments)
     when "wait"
       handle_wait_command(client, arguments)
+    when "type"
+      handle_type_command(client, arguments)
     else
       client.write(RESPEncoder.encode_error_message("unknown command `#{command}`"))
     end
@@ -187,9 +189,19 @@ class RedisServer
     client.write(RESPEncoder.encode(confirmed.size))
   end
 
+  def handle_type_command(client, arguments)
+    value = @database.get(arguments[0])
+
+    if value
+      client.write(RESPEncoder.encode("string")) # TODO: Handle other types
+    else
+      client.write(RESPEncoder.encode("none"))
+    end
+  end
+
   def is_write_command?(command)
     case command.downcase
-    when "replconf", "ping", "echo", "info", "wait"
+    when "replconf", "ping", "echo", "info", "wait", "type"
       false
     else
       true

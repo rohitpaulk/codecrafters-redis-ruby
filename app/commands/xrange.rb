@@ -3,6 +3,7 @@ class Commands::Xrange < Commands::Base
     stream_key = arguments[0]
     start_id_argument = arguments[1]
     end_id_argument = arguments[2]
+
     start_id = if start_id_argument == "-"
       Values::Stream::EntryID.new(0, 1)
     else

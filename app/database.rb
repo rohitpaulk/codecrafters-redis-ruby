@@ -1,30 +1,30 @@
 class Database
   def initialize
-    @data = {}
+    @keyspace = {}
   end
 
   def set(key, value)
-    @data[key] = {
+    @keyspace[key] = {
       value: value,
       expiry: nil
     }
   end
 
   def set_with_expiry(key, value, expiry_in_milliseconds)
-    @data[key] = {
+    @keyspace[key] = {
       value: value,
       expiry: Time.now + (expiry_in_milliseconds / 1000.0)
     }
   end
 
   def get(key)
-    return nil unless @data[key]
+    return nil unless @keyspace[key]
 
-    if @data[key][:expiry] && @data[key][:expiry] < Time.now
-      @data.delete(key)
+    if @keyspace[key][:expiry] && @keyspace[key][:expiry] < Time.now
+      @keyspace.delete(key)
       return nil
     end
 
-    @data[key][:value]
+    @keyspace[key][:value]
   end
 end

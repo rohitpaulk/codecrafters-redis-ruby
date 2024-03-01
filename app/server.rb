@@ -1,14 +1,14 @@
 require "socket"
 require "securerandom"
 require "stringio"
+require "zeitwerk"
 
-require_relative "command_line_options_parser"
-require_relative "database"
-require_relative "resp_connection"
-require_relative "resp_decoder"
-require_relative "resp_encoder"
-require_relative "replication_client"
-require_relative "replication_stream"
+loader = Zeitwerk::Loader.new
+loader.push_dir(__dir__)
+loader.inflector.inflect("resp_connection" => "RESPConnection")
+loader.inflector.inflect("resp_decoder" => "RESPDecoder")
+loader.inflector.inflect("resp_encoder" => "RESPEncoder")
+loader.setup
 
 $stdout.sync = true
 
@@ -103,6 +103,8 @@ class RedisServer
       handle_wait_command(client, arguments)
     when "type"
       handle_type_command(client, arguments)
+    when "xadd"
+      handle_xadd_command(client, arguments)
     else
       client.write(RESPEncoder.encode_error_message("unknown command `#{command}`"))
     end
@@ -118,7 +120,12 @@ class RedisServer
 
   def handle_get_command(client, arguments)
     value = @database.get(arguments[0])
-    client.write(RESPEncoder.encode(value))
+
+    if value.is_a?(Values::String)
+      client.write(RESPEncoder.encode(value.data))
+    else
+      client.write(RESPEncoder.encode_error_message("WRONGTYPE Operation against a key holding the wrong kind of value"))
+    end
   end
 
   def handle_info_command(client, arguments)
@@ -144,7 +151,8 @@ class RedisServer
       arguments = arguments[0..1]
     end
 
-    key, value = arguments
+    key, contents = arguments
+    value = Values::String.new(contents)
 
     if option_arguments.empty?
       @database.set(key, value)
@@ -197,6 +205,10 @@ class RedisServer
     else
       client.write(RESPEncoder.encode("none"))
     end
+  end
+
+  def handle_xadd_command(client, arguments)
+    stream = @database.get(arguments[0]) || {}
   end
 
   def is_write_command?(command)

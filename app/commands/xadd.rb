@@ -2,7 +2,7 @@ class Commands::Xadd < Commands::Base
   def run(arguments)
     stream_key = arguments[0]
     entry_id_argument = arguments[1]
-    key_value_pairs = arguments[2..] # TODO: Use this
+    entry_values = arguments[2..] # TODO: Use this
 
     database = server.database
 
@@ -25,7 +25,7 @@ class Commands::Xadd < Commands::Base
         return
       end
 
-      entry = Values::Stream::Entry.new(entry_id, key_value_pairs)
+      entry = Values::Stream::Entry.new(entry_id, entry_values)
       stream.add_entry(entry)
       database.set(stream_key, stream)
       client.write(RESPEncoder.encode(entry.id.to_s))

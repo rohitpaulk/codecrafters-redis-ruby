@@ -107,6 +107,8 @@ class RedisServer
       handle_type_command(client, arguments)
     when "xadd"
       Commands::Xadd.new(client, self).run(arguments)
+    when "xrange"
+      Commands::Xrange.new(client, self).run(arguments)
     else
       client.write(RESPEncoder.encode_error_message("unknown command `#{command}`"))
     end

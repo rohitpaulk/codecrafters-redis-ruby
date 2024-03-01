@@ -13,6 +13,7 @@ loader.setup
 $stdout.sync = true
 
 class RedisServer
+  attr_reader :database
   attr_reader :replica_of
   attr_reader :port
   attr_reader :replication_id
@@ -88,6 +89,7 @@ class RedisServer
   end
 
   def handle_client_command(client, command, arguments)
+    # TODO: Move other commands to their own classes too
     case command.downcase
     when "ping"
       handle_ping_command(client, arguments)
@@ -96,7 +98,7 @@ class RedisServer
     when "set"
       handle_set_command(client, arguments)
     when "get"
-      handle_get_command(client, arguments)
+      Commands::Get.new(client, self).run(arguments)
     when "info"
       handle_info_command(client, arguments)
     when "wait"
@@ -104,7 +106,7 @@ class RedisServer
     when "type"
       handle_type_command(client, arguments)
     when "xadd"
-      handle_xadd_command(client, arguments)
+      Commands::Xadd.new(client, self).run(arguments)
     else
       client.write(RESPEncoder.encode_error_message("unknown command `#{command}`"))
     end
@@ -202,34 +204,6 @@ class RedisServer
   def handle_type_command(client, arguments)
     value = @database.get(arguments[0])
     client.write(RESPEncoder.encode(value&.type || "none"))
-  end
-
-  def handle_xadd_command(client, arguments)
-    stream_key = arguments[0]
-    entry_id = arguments[1]
-    key_value_pairs = arguments[2..] # TODO: Use this
-
-    entry = Values::Stream::Entry.new(
-      Values::Stream::EntryID.from_string(entry_id),
-      key_value_pairs.each_slice(2).to_h
-    )
-
-    if entry.id <= Values::Stream::EntryID.new(0, 0)
-      client.write(RESPEncoder.encode_error_message("ERR The ID specified in XADD must be greater than 0-0"))
-      return
-    end
-
-    @database.with_lock do
-      stream = @database.get(stream_key) || @database.set(stream_key, Values::Stream.new)
-
-      if stream.sorted_entries.last && entry.id <= stream.sorted_entries.last.id
-        client.write(RESPEncoder.encode_error_message("ERR The ID specified in XADD is equal or smaller than the target stream top item"))
-        return
-      end
-
-      stream.add_entry(entry)
-      client.write(RESPEncoder.encode(entry.id.to_s))
-    end
   end
 
   def is_write_command?(command)

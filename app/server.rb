@@ -59,7 +59,7 @@ class RedisServer
 
     loop do
       command, *arguments = RESPDecoder.decode(client)
-      puts "Received: #{command} #{arguments.join(" ")}"
+      puts "Received: $ #{command} #{arguments.join(" ")}"
 
       case command.downcase
       when "psync" # For PSYNC, we need to take over the loop and handle replication messages instead
@@ -71,7 +71,7 @@ class RedisServer
       else
         handle_client_command(client, command, arguments)
 
-        if is_write_command?(command)
+        if is_write_command?(command) && @replication_streams.any?
           puts "Propagating command to #{@replication_streams.size} replicas: #{command} #{arguments.join(" ")}"
 
           @replication_streams.each do |replication_stream|

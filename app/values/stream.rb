@@ -12,7 +12,7 @@ class Values::Stream
 
     def self.from_string(string)
       time_part, sequence_number_part = string.split("-")
-      # raise "Invalid EntryID string: #{string}" if time_part.nil? || sequence_number_part.nil?
+      raise "Invalid EntryID string: #{string}" if time_part.nil? || sequence_number_part.nil?
       new(time_part.to_i, sequence_number_part.to_i)
     end
 

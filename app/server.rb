@@ -123,6 +123,8 @@ class RedisServer
 
     if value.is_a?(Values::String)
       client.write(RESPEncoder.encode(value.data))
+    elsif value.nil?
+      client.write(RESPEncoder.encode(nil))
     else
       client.write(RESPEncoder.encode_error_message("WRONGTYPE Operation against a key holding the wrong kind of value"))
     end
@@ -199,16 +201,23 @@ class RedisServer
 
   def handle_type_command(client, arguments)
     value = @database.get(arguments[0])
-
-    if value
-      client.write(RESPEncoder.encode("string")) # TODO: Handle other types
-    else
-      client.write(RESPEncoder.encode("none"))
-    end
+    client.write(RESPEncoder.encode(value&.type || "none"))
   end
 
   def handle_xadd_command(client, arguments)
-    stream = @database.get(arguments[0]) || {}
+    stream_key = arguments[0]
+    entry_id = arguments[1]
+    key_value_pairs = arguments[2..] # TODO: Use this
+    stream = @database.get(stream_key) || {}
+
+    if stream.is_a?(Values::Stream)
+      client.write(RESPEncoder.encode_error_message("XADD not implemented"))
+    else
+      stream = Values::Stream.new
+      stream.add_entry(entry_id)
+      @database.set(stream_key, stream)
+      client.write(RESPEncoder.encode("+OK\r\n")) # This is wrong, should return entry ID?
+    end
   end
 
   def is_write_command?(command)

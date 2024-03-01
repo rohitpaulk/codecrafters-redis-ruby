@@ -136,7 +136,7 @@ class RedisServer
       keys = {
         "role" => @replica_of ? "slave" : "master",
         "master_replid" => @replication_id,
-        "master_repl_offset" => @replication_offset,
+        "master_repl_offset" => @replication_offset
       }
 
       client.write(RESPEncoder.encode("#{keys.map { |k, v| "#{k}:#{v}" }.join("\n")}"))
@@ -208,15 +208,27 @@ class RedisServer
     stream_key = arguments[0]
     entry_id = arguments[1]
     key_value_pairs = arguments[2..] # TODO: Use this
-    stream = @database.get(stream_key) || {}
 
-    if stream.is_a?(Values::Stream)
-      client.write(RESPEncoder.encode_error_message("XADD not implemented"))
-    else
-      stream = Values::Stream.new
-      stream.add_entry(entry_id)
-      @database.set(stream_key, stream)
-      client.write(RESPEncoder.encode("+OK\r\n")) # This is wrong, should return entry ID?
+    entry = Values::Stream::Entry.new(
+      Values::Stream::EntryID.from_string(entry_id),
+      key_value_pairs.each_slice(2).to_h
+    )
+
+    if entry.id <= Values::Stream::EntryID.new(0, 0)
+      client.write(RESPEncoder.encode_error_message("ERR The ID specified in XADD must be greater than 0-0"))
+      return
+    end
+
+    @database.with_lock do
+      stream = @database.get(stream_key) || @database.set(stream_key, Values::Stream.new)
+
+      if stream.sorted_entries.last && entry.id <= stream.sorted_entries.last.id
+        client.write(RESPEncoder.encode_error_message("ERR The ID specified in XADD is equal or smaller than the target stream top item"))
+        return
+      end
+
+      stream.add_entry(entry)
+      client.write(RESPEncoder.encode(entry.id.to_s))
     end
   end
 

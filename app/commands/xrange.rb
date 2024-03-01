@@ -11,7 +11,7 @@ class Commands::Xrange < Commands::Base
 
     end_id = if end_id_argument == "+"
       nil
-    end
+    else
       Values::Stream::EntryID.from_string(arguments[2])
     end
 
